@@ -3,36 +3,49 @@ dotenv.config();
 
 import express from "express";
 import multer from "multer";
+import connectDB from "./config/db.js";
+
+import authRoutes from "./routes/authRoutes.js";
+import commitRoutes from "./routes/commitRoutes.js";
+import inviteRoutes from "./routes/inviteRoutes.js";
+import pullRequestRoutes from "./routes/pullRequestRoutes.js";
+import projectRoutes from "./routes/projectRoutes.js";
+import notificationRoutes from "./routes/notificationRoutes.js";
+import branchRoutes from "./routes/branchRoutes.js";
+import generationRoutes from "./routes/generationRoutes.js";
+
 import fs from "fs";
 import cors from "cors";
-import { GoogleGenerativeAI } from "@google/generative-ai";
-import cloudinary from "cloudinary";
+/* import { GoogleGenerativeAI } from "@google/generative-ai";
+import cloudinary from "cloudinary"; */
+
+//connectDB();
 
 const app = express();
 app.use(cors());
 
-const upload = multer({ dest: "uploads/" });
+/* const upload = multer({ dest: "uploads/" }); */
 
 // CLOUDINARY CONFIG
-cloudinary.v2.config({
+/* cloudinary.v2.config({
     cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
     api_key: process.env.CLOUDINARY_API_KEY,
     api_secret: process.env.CLOUDINARY_API_SECRET,
-});
+}); */
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+/* const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY); */
 
 // UPLOAD HELPER
-const uploadToCloudinary = async (filePath) => {
+/* const uploadToCloudinary = async (filePath) => {
     const result = await cloudinary.v2.uploader.upload(filePath, {
         folder: "ai-generator",
     });
 
     return result.secure_url;
-};
+}; */
 
 // GENERATE ROUTE
-app.post(
+/* app.post(
     "/generate",
     upload.fields([
         { name: "images", maxCount: 5 },
@@ -123,7 +136,17 @@ app.post(
             allFiles.forEach((f) => fs.unlink(f.path, () => { }));
         }
     }
-);
+); */
+
+//Routes
+app.use("/auth", authRoutes);
+app.use("/commit", commitRoutes);
+app.use("/invite", inviteRoutes);
+app.use("/pull", pullRequestRoutes);
+app.use("/project", projectRoutes);
+app.use("/notify", notificationRoutes);
+app.use("/branch", branchRoutes);
+app.use("/generate", generationRoutes);
 
 // TEST ROUTE
 app.get("/hi", async (req, res) => {
