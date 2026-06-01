@@ -6,15 +6,9 @@ const router = express.Router();
 const upload = multer({ dest: "uploads/" });
 
 router.post("/generate", upload.fields([
-    {
-        name: "images",
-        maxCount: 5,
-    },
-
-    {
-        name: "previousImage",
-        maxCount: 1,
-    },
+    { name: "images", maxCount: 4 },
+    { name: "previousImage", maxCount: 1 },
+    { name: "drawing", maxCount: 1 },
 ]),
 
     generateImage

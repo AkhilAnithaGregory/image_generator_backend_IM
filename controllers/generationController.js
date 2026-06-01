@@ -6,12 +6,13 @@ import Branch from "../models/Branch.js";
 import Project from "../models/Project.js";
 import Commit from "../models/Commit.js";
 
-const genAI = new GoogleGenerativeAI(
+/* const genAI = new GoogleGenerativeAI(
     process.env.GEMINI_API_KEY
-);
+); */
+const genAI = new GoogleGenerativeAI("AIzaSyA2gyXgxh9E12Vx1gadQ8puCaHdC0KtcXo");
 
 // CLOUDINARY CONFIG
-cloudinary.v2.config({
+/* cloudinary.v2.config({
     cloud_name:
         process.env.CLOUDINARY_CLOUD_NAME,
 
@@ -20,8 +21,13 @@ cloudinary.v2.config({
 
     api_secret:
         process.env.CLOUDINARY_API_SECRET,
-});
+}); */
 
+cloudinary.v2.config({
+    cloud_name: "dsi1yeu2d",
+    api_key: "252322875155562",
+    api_secret: "8pde-nVyuprNfWnmJY_Xbgzjz_k",
+});
 
 
 // UPLOAD HELPER
@@ -39,8 +45,6 @@ const uploadToCloudinary =
         return result.secure_url;
     };
 
-
-
 // MAIN GENERATION FUNCTION
 export const generateImage =
     async (req, res) => {
@@ -49,6 +53,9 @@ export const generateImage =
                 projectId,
                 branchId,
                 prompt,
+                aspectRatio,
+                modelName,
+                style
             } = req.body;
 
             // parse state safely
@@ -57,8 +64,8 @@ export const generateImage =
             try {
                 state = req.body.state
                     ? JSON.parse(
-                          req.body.state
-                      )
+                        req.body.state
+                    )
                     : {};
             } catch (err) {
                 state = {};
@@ -67,28 +74,25 @@ export const generateImage =
             const model =
                 genAI.getGenerativeModel({
                     model:
-                        "gemini-3.1-flash-image-preview",
+                        modelName || "gemini-3.1-flash-image-preview",
                 });
 
             const enhancedPrompt =
                 `${prompt},
-                highly realistic,
-                ultra detailed,
-                natural lighting,
-                4k, sharp focus,
-                professional photography`;
+                ${style ? `Style: ${style}` : ""},
+                highly realistic, ultra detailed, natural lighting,
+                4k, sharp focus, professional photography,
+                IMPORTANT: use the drawing image as a guidance mask for edits`;
 
             // images from request
-            const uploadedImages =
-                req.files?.images || [];
-
-            const previousImage =
-                req.files?.previousImage ||
-                [];
+            const uploadedImages = req.files?.images || [];
+            const previousImage = req.files?.previousImage || [];
+            const drawingImage = req.files?.drawing || [];
 
             const allImages = [
                 ...uploadedImages,
                 ...previousImage,
+                ...drawingImage
             ];
 
             const imageParts =
@@ -135,6 +139,9 @@ export const generateImage =
                             "IMAGE",
                             "TEXT",
                         ],
+                        imageConfig: {
+                            aspectRatio: aspectRatio || "1:1"
+                        }
                     },
                 });
 
@@ -188,23 +195,29 @@ export const generateImage =
             );
 
             // upload to cloudinary
-            const imageUrl =
-                await uploadToCloudinary(
-                    tempPath
-                );
+            const imageUrl = await uploadToCloudinary(tempPath);
 
             fs.unlinkSync(tempPath);
+            let drawingImageUrl = null;
 
+            if (drawingImage.length > 0) {
+                drawingImageUrl = await uploadToCloudinary(
+                    drawingImage[0].path
+                );
+            }
+
+            const uploadedImageUrls = [];
+
+            for (const file of uploadedImages) {
+                const url = await uploadToCloudinary(file.path);
+                uploadedImageUrls.push(url);
+            }
             // cleanup input files
-            allImages.forEach((f) =>
-                fs.unlink(
-                    f.path,
-                    () => {}
+            await Promise.all(
+                allImages.map((f) =>
+                    fs.promises.unlink(f.path).catch(() => { })
                 )
             );
-
-
-
             // OPTIONAL: SAVE TO PROJECT (if provided)
             let commit = null;
 
@@ -234,7 +247,7 @@ export const generateImage =
                     const nextVersion =
                         latestCommit
                             ? latestCommit.version +
-                              1
+                            1
                             : 1;
 
                     commit =
@@ -282,13 +295,12 @@ export const generateImage =
             // RESPONSE
             return res.status(201).json({
                 image: imageUrl,
-
-                text:
-                    textPart?.text ||
-                    "",
-
-                commit:
-                    commit || null,
+                text: textPart?.text || "",
+                commit: commit || null,
+                drawingImage: drawingImageUrl,
+                uploadedImages: uploadedImageUrls,
+                aspectRatio: aspectRatio,
+                modelName: modelName
             });
         } catch (error) {
             console.log(error);
