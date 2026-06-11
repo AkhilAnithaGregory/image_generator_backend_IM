@@ -1,40 +1,14 @@
 import fs from "fs";
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import cloudinary from "cloudinary";
-
 import Branch from "../models/Branch.js";
 import Project from "../models/Project.js";
 import Commit from "../models/Commit.js";
+import cloudinary from "../config/cloudinary.js";
 
-/* const genAI = new GoogleGenerativeAI(
-    process.env.GEMINI_API_KEY
-); */
-const genAI = new GoogleGenerativeAI("AIzaSyA2gyXgxh9E12Vx1gadQ8puCaHdC0KtcXo");
-
-// CLOUDINARY CONFIG
-/* cloudinary.v2.config({
-    cloud_name:
-        process.env.CLOUDINARY_CLOUD_NAME,
-
-    api_key:
-        process.env.CLOUDINARY_API_KEY,
-
-    api_secret:
-        process.env.CLOUDINARY_API_SECRET,
-}); */
-
-cloudinary.v2.config({
-    cloud_name: "dsi1yeu2d",
-    api_key: "252322875155562",
-    api_secret: "8pde-nVyuprNfWnmJY_Xbgzjz_k",
-});
-
-
-// UPLOAD HELPER
 const uploadToCloudinary =
     async (filePath) => {
         const result =
-            await cloudinary.v2.uploader.upload(
+            await cloudinary.uploader.upload(
                 filePath,
                 {
                     folder:
@@ -45,7 +19,6 @@ const uploadToCloudinary =
         return result.secure_url;
     };
 
-// MAIN GENERATION FUNCTION
 export const generateImage =
     async (req, res) => {
         try {
@@ -58,7 +31,6 @@ export const generateImage =
                 style
             } = req.body;
 
-            // parse state safely
             let state = {};
 
             try {
@@ -71,20 +43,43 @@ export const generateImage =
                 state = {};
             }
 
-            const model =
-                genAI.getGenerativeModel({
-                    model:
-                        modelName || "gemini-3.1-flash-image-preview",
-                });
 
-            const enhancedPrompt =
-                `${prompt},
-                ${style ? `Style: ${style}` : ""},
-                highly realistic, ultra detailed, natural lighting,
-                4k, sharp focus, professional photography,
-                IMPORTANT: use the drawing image as a guidance mask for edits`;
+            if (!process.env.GEMINI_API_KEY) {
+                return res.status(500).json({ message: 'GEMINI_API_KEY not set in environment' });
+            }
 
-            // images from request
+            const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+
+            const model = genAI.getGenerativeModel({
+                model: modelName || "gemini-3.1-flash-image-preview",
+            });
+
+            const enhancedPrompt = `
+${prompt}
+
+You are an image editing AI performing MASKED INPAINTING.
+
+STRICT RULES (MUST FOLLOW EXACTLY):
+
+1. The drawing image is a MASK.
+2. ONLY modify pixels where the drawing exists.
+3. DO NOT change ANYTHING outside the drawn region.
+4. DO NOT remove or edit any person not covered by the drawing.
+5. Replace ONLY the marked area realistically with background content.
+6. Preserve perspective, lighting, shadows exactly.
+
+FAIL CONDITION:
+If you modify any area outside the drawing → the result is INVALID.
+
+INPUT PRIORITY:
+- Drawing = EXACT edit region (hard mask)
+- Base image = unchanged except mask
+
+OUTPUT: photorealistic, seamless fill, no artifacts.
+`;
+
+
+
             const uploadedImages = req.files?.images || [];
             const previousImage = req.files?.previousImage || [];
             const drawingImage = req.files?.drawing || [];
@@ -114,15 +109,51 @@ export const generateImage =
                     };
                 });
 
-            const contents = [
-                {
-                    text: enhancedPrompt,
-                },
+            const contents = [];
 
-                ...imageParts,
-            ];
+            contents.push({
+                text: enhancedPrompt,
+            });
 
-            // GENERATE IMAGE
+            if (previousImage.length > 0) {
+                contents.push({
+                    text: "BASE IMAGE (edit this image, keep structure):",
+                });
+
+                contents.push({
+                    inlineData: {
+                        mimeType: previousImage[0].mimetype,
+                        data: fs.readFileSync(previousImage[0].path).toString("base64"),
+                    },
+                });
+            }
+
+            if (drawingImage.length > 0) {
+                contents.push({
+                    text: "DRAWING GUIDE (apply modifications from this sketch):",
+                });
+
+                contents.push({
+                    inlineData: {
+                        mimeType: drawingImage[0].mimetype,
+                        data: fs.readFileSync(drawingImage[0].path).toString("base64"),
+                    },
+                });
+            }
+
+            uploadedImages.forEach((file) => {
+                contents.push({
+                    text: "REFERENCE IMAGE:",
+                });
+
+                contents.push({
+                    inlineData: {
+                        mimeType: file.mimetype,
+                        data: fs.readFileSync(file.path).toString("base64"),
+                    },
+                });
+            });
+
             const result =
                 await model.generateContent({
                     contents: [
@@ -180,7 +211,6 @@ export const generateImage =
                 });
             }
 
-            // convert image
             const buffer = Buffer.from(
                 imagePart.inlineData.data,
                 "base64"
@@ -194,7 +224,6 @@ export const generateImage =
                 buffer
             );
 
-            // upload to cloudinary
             const imageUrl = await uploadToCloudinary(tempPath);
 
             fs.unlinkSync(tempPath);
@@ -212,13 +241,11 @@ export const generateImage =
                 const url = await uploadToCloudinary(file.path);
                 uploadedImageUrls.push(url);
             }
-            // cleanup input files
             await Promise.all(
                 allImages.map((f) =>
                     fs.promises.unlink(f.path).catch(() => { })
                 )
             );
-            // OPTIONAL: SAVE TO PROJECT (if provided)
             let commit = null;
 
             if (projectId && branchId) {
@@ -292,7 +319,6 @@ export const generateImage =
                 }
             }
 
-            // RESPONSE
             return res.status(201).json({
                 image: imageUrl,
                 text: textPart?.text || "",
@@ -303,8 +329,6 @@ export const generateImage =
                 modelName: modelName
             });
         } catch (error) {
-            console.log(error);
-
             res.status(500).json({
                 message:
                     error.message,
