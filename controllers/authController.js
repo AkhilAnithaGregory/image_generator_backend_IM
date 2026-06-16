@@ -8,8 +8,6 @@ import Invite from "../models/Invite.js";
 import PullRequest from "../models/PullRequest.js";
 import Notification from "../models/Notification.js";
 
-
-// SIGNUP
 export const signup = async (req, res) => {
     try {
         const { username, email, password } = req.body;
@@ -69,10 +67,6 @@ export const signup = async (req, res) => {
         });
     }
 };
-
-
-
-// LOGIN
 export const login = async (req, res) => {
     try {
         const { email, password } = req.body;
@@ -134,10 +128,6 @@ export const login = async (req, res) => {
         });
     }
 };
-
-
-
-// GET CURRENT USER
 export const getMe = async (req, res) => {
     try {
         const user = await User.findById(req.user.id).select(
@@ -153,7 +143,6 @@ export const getMe = async (req, res) => {
         });
     }
 };
-
 export const updateUser = async (
     req,
     res
@@ -249,7 +238,6 @@ export const updateUser = async (
         });
     }
 };
-
 export const deleteUser = async (
     req,
     res

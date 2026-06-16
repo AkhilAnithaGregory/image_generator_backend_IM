@@ -32,6 +32,12 @@ const inviteSchema = new mongoose.Schema(
     }
 );
 
+inviteSchema.index(
+    { project: 1, toUser: 1 },
+    { unique: true }
+);
+
+
 export default mongoose.model(
     "Invite",
     inviteSchema

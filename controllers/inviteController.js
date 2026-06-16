@@ -1,14 +1,8 @@
 import Invite from "../models/Invite.js";
-
 import User from "../models/User.js";
-
 import Project from "../models/Project.js";
-
 import Branch from "../models/Branch.js";
 
-
-
-// SEND INVITE
 export const sendInvite = async (
     req,
     res
@@ -59,6 +53,19 @@ export const sendInvite = async (
             });
         }
 
+        const alreadyMember =
+            project.owner.toString() === targetUser._id.toString() ||
+            project.collaborators.some(
+                (c) => c.user.toString() === targetUser._id.toString()
+            );
+
+        if (alreadyMember) {
+            return res.status(400).json({
+                message: "User already in project",
+            });
+        }
+
+
         // check existing invite
         const existingInvite =
             await Invite.findOne({
@@ -97,17 +104,9 @@ export const sendInvite = async (
         });
     }
 };
-
-// ACCEPT INVITE
-export const acceptInvite = async (
-    req,
-    res
-) => {
+export const acceptInvite = async (req, res) => {
     try {
-        const invite =
-            await Invite.findById(
-                req.params.inviteId
-            );
+        const invite = await Invite.findById(req.params.inviteId);
 
         if (!invite) {
             return res.status(404).json({
@@ -115,69 +114,71 @@ export const acceptInvite = async (
             });
         }
 
-        // only invited user can accept
-        if (
-            invite.toUser.toString() !==
-            req.user.id
-        ) {
+        // ✅ only invited user
+        if (invite.toUser.toString() !== req.user.id) {
             return res.status(403).json({
                 message: "Unauthorized",
             });
         }
 
-        // already handled
         if (invite.status !== "pending") {
             return res.status(400).json({
-                message:
-                    "Invite already handled",
+                message: "Invite already handled",
             });
         }
 
-        // update invite
+        // ✅ mark accepted
         invite.status = "accepted";
-
         await invite.save();
 
-        // add collaborator
-        const project =
-            await Project.findById(
-                invite.project
-            );
+        const project = await Project.findById(invite.project);
 
-        project.collaborators.push({
-            user: req.user.id,
-            role: "editor",
-        });
+        if (!project) {
+            return res.status(404).json({
+                message: "Project not found",
+            });
+        }
 
-        await project.save();
+        // ✅ add collaborator safely
+        const alreadyCollaborator = project.collaborators.some(
+            (c) => c.user.toString() === req.user.id
+        );
 
-        // create personal branch
-        const branchName = `${req.user.id}-branch`;
+        if (!alreadyCollaborator) {
+            project.collaborators.push({
+                user: req.user.id,
+                role: "editor",
+            });
+            await project.save();
+        }
 
-        await Branch.create({
-            name: branchName,
-
+        // ✅ create personal branch (only if not exists)
+        const existingBranch = await Branch.findOne({
             project: project._id,
-
             owner: req.user.id,
-
             isMain: false,
         });
 
+        if (!existingBranch) {
+            const branchName = `user-${req.user.id}-branch`;
+
+            await Branch.create({
+                name: branchName,
+                project: project._id,
+                owner: req.user.id,
+                isMain: false,
+            });
+        }
+
         res.status(200).json({
-            message:
-                "Invite accepted successfully",
+            message: "Invite accepted successfully",
         });
     } catch (error) {
-        console.log(error);
-
         res.status(500).json({
             message: error.message,
         });
     }
 };
-
-// REJECT INVITE
 export const rejectInvite = async (
     req,
     res
@@ -228,8 +229,6 @@ export const rejectInvite = async (
         });
     }
 };
-
-// GET MY INVITES
 export const getMyInvites = async (
     req,
     res
@@ -260,8 +259,6 @@ export const getMyInvites = async (
         });
     }
 };
-
-//Can cancel only pending invites
 export const cancelInvite = async (
     req,
     res
@@ -322,136 +319,131 @@ export const cancelInvite = async (
         });
     }
 };
-
-//Remove Collaborator only owner can do it
 export const removeCollaborator = async (req, res) => {
-        try {
-            const {
-                projectId,
-                collaboratorId,
-            } = req.params;
+    try {
+        const {
+            projectId,
+            collaboratorId,
+        } = req.params;
 
-            const project =
-                await Project.findById(
-                    projectId
-                );
+        const project =
+            await Project.findById(
+                projectId
+            );
 
-            if (!project) {
-                return res.status(404).json({
-                    message:
-                        "Project not found",
-                });
-            }
-
-            // owner only
-            if (
-                project.owner.toString() !==
-                req.user.id
-            ) {
-                return res.status(403).json({
-                    message:
-                        "Unauthorized",
-                });
-            }
-
-            // cannot remove owner
-            if (
-                collaboratorId ===
-                req.user.id
-            ) {
-                return res.status(400).json({
-                    message:
-                        "Owner cannot remove themselves",
-                });
-            }
-
-            // remove collaborator
-            project.collaborators =
-                project.collaborators.filter(
-                    (c) =>
-                        c.user.toString() !==
-                        collaboratorId
-                );
-
-            await project.save();
-
-            // delete collaborator branches
-            await Branch.deleteMany({
-                project: projectId,
-                owner: collaboratorId,
-                isMain: false,
-            });
-
-            res.status(200).json({
+        if (!project) {
+            return res.status(404).json({
                 message:
-                    "Collaborator removed successfully",
-            });
-        } catch (error) {
-            console.log(error);
-
-            res.status(500).json({
-                message: error.message,
+                    "Project not found",
             });
         }
-    };
 
-//get Project collaborators
-export const getProjectCollaborators =
-    async (req, res) => {
-        try {
-            const project =
-                await Project.findById(
-                    req.params.projectId
+        // owner only
+        if (
+            project.owner.toString() !==
+            req.user.id
+        ) {
+            return res.status(403).json({
+                message:
+                    "Unauthorized",
+            });
+        }
+
+        // cannot remove owner
+        if (
+            collaboratorId ===
+            req.user.id
+        ) {
+            return res.status(400).json({
+                message:
+                    "Owner cannot remove themselves",
+            });
+        }
+
+        // remove collaborator
+        project.collaborators =
+            project.collaborators.filter(
+                (c) =>
+                    c.user.toString() !==
+                    collaboratorId
+            );
+
+        await project.save();
+
+        // delete collaborator branches
+        await Branch.deleteMany({
+            project: projectId,
+            owner: collaboratorId,
+            isMain: false,
+        });
+
+        res.status(200).json({
+            message:
+                "Collaborator removed successfully",
+        });
+    } catch (error) {
+        console.log(error);
+
+        res.status(500).json({
+            message: error.message,
+        });
+    }
+};
+export const getProjectCollaborators = async (req, res) => {
+    try {
+        const project =
+            await Project.findById(
+                req.params.projectId
+            )
+                .populate(
+                    "owner",
+                    "username email"
                 )
-                    .populate(
-                        "owner",
-                        "username email"
-                    )
-                    .populate(
-                        "collaborators.user",
-                        "username email"
-                    );
-
-            if (!project) {
-                return res.status(404).json({
-                    message:
-                        "Project not found",
-                });
-            }
-
-            // access check
-            const isOwner =
-                project.owner._id.toString() ===
-                req.user.id;
-
-            const isCollaborator =
-                project.collaborators.some(
-                    (c) =>
-                        c.user._id.toString() ===
-                        req.user.id
+                .populate(
+                    "collaborators.user",
+                    "username email"
                 );
 
-            if (
-                !isOwner &&
-                !isCollaborator
-            ) {
-                return res.status(403).json({
-                    message:
-                        "Unauthorized",
-                });
-            }
-
-            res.status(200).json({
-                owner: project.owner,
-
-                collaborators:
-                    project.collaborators,
-            });
-        } catch (error) {
-            console.log(error);
-
-            res.status(500).json({
-                message: error.message,
+        if (!project) {
+            return res.status(404).json({
+                message:
+                    "Project not found",
             });
         }
-    };
+
+        // access check
+        const isOwner =
+            project.owner._id.toString() ===
+            req.user.id;
+
+        const isCollaborator =
+            project.collaborators.some(
+                (c) =>
+                    c.user._id.toString() ===
+                    req.user.id
+            );
+
+        if (
+            !isOwner &&
+            !isCollaborator
+        ) {
+            return res.status(403).json({
+                message:
+                    "Unauthorized",
+            });
+        }
+
+        res.status(200).json({
+            owner: project.owner,
+
+            collaborators:
+                project.collaborators,
+        });
+    } catch (error) {
+        console.log(error);
+
+        res.status(500).json({
+            message: error.message,
+        });
+    }
+};

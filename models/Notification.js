@@ -49,6 +49,11 @@ const notificationSchema = new mongoose.Schema(
     }
 );
 
+notificationSchema.index({
+  receiver: 1,
+  isRead: 1
+});
+
 export default mongoose.model(
     "Notification",
     notificationSchema

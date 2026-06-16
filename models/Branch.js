@@ -61,15 +61,10 @@ const branchSchema =
         }
     );
 
-
-
-// unique branch name per project
-branchSchema.index({
-    project: 1,
-    name: 1,
-}, {
-    unique: true,
-});
+branchSchema.index(
+    { project: 1, name: 1 },
+    { unique: true }
+);
 
 export default mongoose.model(
     "Branch",

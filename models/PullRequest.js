@@ -49,7 +49,6 @@ const pullRequestSchema = new mongoose.Schema(
             default: "open",
         },
 
-        // optional conflict detection
         baseVersion: {
             type: Number,
             default: 1,
@@ -68,6 +67,16 @@ const pullRequestSchema = new mongoose.Schema(
         timestamps: true,
     }
 );
+
+pullRequestSchema.index({
+    project: 1,
+    status: 1
+});
+
+pullRequestSchema.index({
+  fromBranch: 1,
+  toBranch: 1
+});
 
 export default mongoose.model(
     "PullRequest",

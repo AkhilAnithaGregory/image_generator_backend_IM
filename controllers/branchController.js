@@ -1,270 +1,88 @@
 import Branch from "../models/Branch.js";
-import Project from "../models/Project.js";
 import Commit from "../models/Commit.js";
+import { checkProjectAccess } from "../helper/projectHelper.js";
 
+export const getBranches = async (req, res) => {
+  try {
+    const { projectId } = req.params;
 
+    const { error } = await checkProjectAccess(projectId, req.user.id);
+    if (error) return res.status(403).json({ message: error });
 
-// GET ALL BRANCHES
-export const getBranches =
-    async (req, res) => {
-        try {
-            const branches =
-                await Branch.find({
-                    project:
-                        req.params.projectId,
-                })
-                    .populate(
-                        "owner",
-                        "username email"
-                    )
-                    .sort({
-                        createdAt: 1,
-                    });
+    const branches = await Branch.find({ project: projectId })
+      .populate("owner", "username email")
+      .sort({ createdAt: 1 });
 
-            res.status(200).json(
-                branches
-            );
-        } catch (error) {
-            console.log(error);
+    res.status(200).json(branches);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+export const createBranch = async (req, res) => {
+  try {
+    const { name } = req.body;
+    const { projectId } = req.params;
 
-            res.status(500).json({
-                message:
-                    error.message,
-            });
-        }
-    };
+    const { error } = await checkProjectAccess(projectId, req.user.id);
+    if (error) return res.status(403).json({ message: error });
 
+    const existingBranch = await Branch.findOne({
+      project: projectId,
+      name,
+    });
 
+    if (existingBranch) {
+      return res.status(400).json({
+        message: "Branch already exists",
+      });
+    }
 
-// CREATE BRANCH
-export const createBranch =
-    async (req, res) => {
-        try {
-            const { name } = req.body;
+    const branch = await Branch.create({
+      name,
+      project: projectId,
+      owner: req.user.id,
+      isMain: false,
+    });
 
-            const project =
-                await Project.findById(
-                    req.params.projectId
-                );
+    res.status(201).json({
+      message: "Branch created successfully",
+      branch,
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+export const deleteBranch = async (req, res) => {
+  try {
+    const { branchId } = req.params;
 
-            if (!project) {
-                return res.status(404).json({
-                    message:
-                        "Project not found",
-                });
-            }
+    const branch = await Branch.findById(branchId);
 
-            // check existing branch
-            const existingBranch =
-                await Branch.findOne({
-                    project:
-                        project._id,
-                    name,
-                });
+    if (!branch) {
+      return res.status(404).json({
+        message: "Branch not found",
+      });
+    }
 
-            if (existingBranch) {
-                return res.status(400).json({
-                    message:
-                        "Branch already exists",
-                });
-            }
+    const { error } = await checkProjectAccess(
+      branch.project,
+      req.user.id
+    );
+    if (error) return res.status(403).json({ message: error });
 
-            // create branch
-            const branch =
-                await Branch.create({
-                    name,
+    if (branch.isMain) {
+      return res.status(400).json({
+        message: "Cannot delete main branch",
+      });
+    }
 
-                    project:
-                        project._id,
+    await Commit.deleteMany({ branch: branch._id });
+    await branch.deleteOne();
 
-                    owner:
-                        req.user.id,
-
-                    isMain: false,
-                });
-
-            res.status(201).json({
-                message:
-                    "Branch created successfully",
-
-                branch,
-            });
-        } catch (error) {
-            console.log(error);
-
-            res.status(500).json({
-                message:
-                    error.message,
-            });
-        }
-    };
-
-
-
-// DELETE BRANCH
-export const deleteBranch =
-    async (req, res) => {
-        try {
-            const branch =
-                await Branch.findById(
-                    req.params.branchId
-                );
-
-            if (!branch) {
-                return res.status(404).json({
-                    message:
-                        "Branch not found",
-                });
-            }
-
-            // cannot delete main
-            if (branch.isMain) {
-                return res.status(400).json({
-                    message:
-                        "Cannot delete main branch",
-                });
-            }
-
-            // only owner
-            if (
-                branch.owner.toString() !==
-                req.user.id
-            ) {
-                return res.status(403).json({
-                    message:
-                        "Unauthorized",
-                });
-            }
-
-            // delete commits
-            await Commit.deleteMany({
-                branch:
-                    branch._id,
-            });
-
-            // delete branch
-            await branch.deleteOne();
-
-            res.status(200).json({
-                message:
-                    "Branch deleted successfully",
-            });
-        } catch (error) {
-            console.log(error);
-
-            res.status(500).json({
-                message:
-                    error.message,
-            });
-        }
-    };
-
-
-
-// PULL LATEST
-export const pullLatest =
-    async (req, res) => {
-        try {
-            const branch =
-                await Branch.findById(
-                    req.params.branchId
-                );
-
-            if (!branch) {
-                return res.status(404).json({
-                    message:
-                        "Branch not found",
-                });
-            }
-
-            // latest commit
-            const latestCommit =
-                await Commit.findOne({
-                    branch:
-                        branch._id,
-                }).sort({
-                    version: -1,
-                });
-
-            if (!latestCommit) {
-                return res.status(404).json({
-                    message:
-                        "No commits found",
-                });
-            }
-
-            res.status(200).json({
-                branch,
-
-                latestCommit,
-            });
-        } catch (error) {
-            console.log(error);
-
-            res.status(500).json({
-                message:
-                    error.message,
-            });
-        }
-    };
-
-
-
-// PUSH BRANCH
-export const pushBranch =
-    async (req, res) => {
-        try {
-            const branch =
-                await Branch.findById(
-                    req.params.branchId
-                );
-
-            if (!branch) {
-                return res.status(404).json({
-                    message:
-                        "Branch not found",
-                });
-            }
-
-            // only branch owner
-            if (
-                branch.owner.toString() !==
-                req.user.id
-            ) {
-                return res.status(403).json({
-                    message:
-                        "Unauthorized",
-                });
-            }
-
-            // latest commit
-            const latestCommit =
-                await Commit.findOne({
-                    branch:
-                        branch._id,
-                }).sort({
-                    version: -1,
-                });
-
-            if (!latestCommit) {
-                return res.status(404).json({
-                    message:
-                        "No commits found",
-                });
-            }
-
-            res.status(200).json({
-                message:
-                    "Branch pushed successfully",
-
-                latestCommit,
-            });
-        } catch (error) {
-            console.log(error);
-
-            res.status(500).json({
-                message:
-                    error.message,
-            });
-        }
-    };
+    res.status(200).json({
+      message: "Branch deleted successfully",
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
