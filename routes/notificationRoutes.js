@@ -13,11 +13,11 @@ import {
 
 const router = express.Router();
 
-router.get("/notifications", authMiddleware, getNotifications);
+router.get("/", authMiddleware, getNotifications);
 router.get("/notifications/unread/count", authMiddleware, getUnreadCount);
 router.get("/notifications/:notificationId", authMiddleware, getSingleNotification);
-router.put("/notifications/:notificationId/read", authMiddleware, markAsRead);
-router.put("/notifications/read/all", authMiddleware, markAllAsRead);
+router.put("/:notificationId/read", authMiddleware, markAsRead);
+router.put("/read/all", authMiddleware, markAllAsRead);
 router.delete("/notifications/:notificationId", authMiddleware, deleteNotification);
 router.delete("/notifications", authMiddleware, deleteAllNotifications);
 

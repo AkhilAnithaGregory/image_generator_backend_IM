@@ -15,20 +15,22 @@ import notificationRoutes from "./routes/notificationRoutes.js";
 import branchRoutes from "./routes/branchRoutes.js";
 import generationRoutes from "./routes/generationRoutes.js";
 
-//connectDB();
+connectDB();
 
 const app = express();
+
+app.use(express.json());
 app.use(cors());
 
 //Routes
-app.use("/auth", authRoutes);
-app.use("/commit", commitRoutes);
-app.use("/invite", inviteRoutes);
-app.use("/pull", pullRequestRoutes);
-app.use("/project", projectRoutes);
-app.use("/notify", notificationRoutes);
-app.use("/branch", branchRoutes);
-app.use("/generate", generationRoutes);
+app.use("/api/auth", authRoutes);
+app.use("/api/commit", commitRoutes);
+app.use("/api/invite", inviteRoutes);
+app.use("/api/pull", pullRequestRoutes);
+app.use("/api/projects", projectRoutes);
+app.use("/api/notification", notificationRoutes);
+app.use("/api/branch", branchRoutes);
+app.use("/api/generate", generationRoutes);
 
 // TEST ROUTE
 app.get("/hi", async (req, res) => {

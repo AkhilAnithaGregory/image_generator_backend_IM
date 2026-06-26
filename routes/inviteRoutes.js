@@ -12,12 +12,12 @@ import {
 
 const router = express.Router();
 
-router.post("/projects/:projectId/invites", authMiddleware, sendInvite);
-router.post("/invites/:inviteId/accept", authMiddleware, acceptInvite);
-router.post("/invites/:inviteId/reject", authMiddleware, rejectInvite);
+router.post("/:projectId", authMiddleware, sendInvite);
+router.post("/accept/:inviteId", authMiddleware, acceptInvite);
+router.post("/reject/:inviteId", authMiddleware, rejectInvite);
 router.delete("/invites/:inviteId", authMiddleware, cancelInvite);
 router.get("/invites", authMiddleware, getMyInvites);
-router.delete("/projects/:projectId/collaborators/:collaboratorId", authMiddleware, removeCollaborator);
-router.get("/projects/:projectId/collaborators", authMiddleware, getProjectCollaborators);
+router.delete("/remove_collaborator/:projectId/id/:collaboratorId", authMiddleware, removeCollaborator);
+router.get("/project_collaborators/:projectId", authMiddleware, getProjectCollaborators);
 
 export default router;

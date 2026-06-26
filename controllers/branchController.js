@@ -20,22 +20,8 @@ export const getBranches = async (req, res) => {
 };
 export const createBranch = async (req, res) => {
   try {
-    const { name } = req.body;
+    const { name, fromBranchId } = req.body;
     const { projectId } = req.params;
-
-    const { error } = await checkProjectAccess(projectId, req.user.id);
-    if (error) return res.status(403).json({ message: error });
-
-    const existingBranch = await Branch.findOne({
-      project: projectId,
-      name,
-    });
-
-    if (existingBranch) {
-      return res.status(400).json({
-        message: "Branch already exists",
-      });
-    }
 
     const branch = await Branch.create({
       name,
@@ -44,12 +30,32 @@ export const createBranch = async (req, res) => {
       isMain: false,
     });
 
-    res.status(201).json({
-      message: "Branch created successfully",
-      branch,
-    });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
+    if (fromBranchId) {
+      const sourceCommit = await Commit.findOne({
+        branch: fromBranchId,
+      }).sort({ version: -1 });
+
+      if (sourceCommit) {
+        const newCommit = await Commit.create({
+          project: projectId,
+          branch: branch._id,
+          createdBy: req.user.id,
+          version: 1,
+          message: `Initial commit from branch clone`,
+          state: sourceCommit.state,
+          generatedImage: sourceCommit.generatedImage,
+          prompt: sourceCommit.prompt,
+        });
+
+        branch.latestCommit = newCommit._id;
+        branch.version = 1;
+        await branch.save();
+      }
+    }
+
+    res.status(201).json({ branch });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
 };
 export const deleteBranch = async (req, res) => {

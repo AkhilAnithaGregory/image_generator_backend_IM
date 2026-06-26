@@ -4,7 +4,7 @@ import { commitChanges, getCommits, getSingleCommit, deleteCommit, revertToCommi
 
 const router = express.Router();
 
-router.post("/branches/:branchId/commits", authMiddleware, commitChanges);
+router.post("/:branchId", authMiddleware, commitChanges);
 router.get("/branches/:branchId/commits", authMiddleware, getCommits);
 router.get("/commits/:commitId", authMiddleware, getSingleCommit);
 router.delete("/commits/:commitId", authMiddleware, deleteCommit);

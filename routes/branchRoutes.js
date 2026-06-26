@@ -6,9 +6,9 @@ import { pullLatest } from "../controllers/commitController.js";
 
 const router = express.Router();
 
-router.get("/projects/:projectId/branches", authMiddleware, getBranches);
-router.post("/projects/:projectId/branches", authMiddleware, createBranch);
-router.delete("/branches/:branchId", authMiddleware, deleteBranch);
-router.get("/branches/:branchId/pull", authMiddleware, pullLatest);
+router.get("/:projectId", authMiddleware, getBranches);
+router.post("/:projectId", authMiddleware, createBranch);
+router.delete("/:branchId", authMiddleware, deleteBranch);
+router.get("/:branchId/pull", authMiddleware, pullLatest);
 
 export default router;

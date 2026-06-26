@@ -145,14 +145,13 @@ export const getSingleProject = async (req, res) => {
         });
     }
 };
-export const updateProjectName = async (req, res) => {
+export const updateProject = async (req, res) => {
     try {
-        const { name } = req.body;
+        const { name, visibility } = req.body;
 
-        if (!name) {
+        if (!name && !visibility) {
             return res.status(400).json({
-                message:
-                    "Project name required",
+                message: "Nothing to update",
             });
         }
 
@@ -168,7 +167,6 @@ export const updateProjectName = async (req, res) => {
             });
         }
 
-        // owner check
         if (
             project.owner.toString() !==
             req.user.id
@@ -179,7 +177,10 @@ export const updateProjectName = async (req, res) => {
             });
         }
 
-        project.name = name;
+
+        if (name) project.name = name;
+        if (visibility) project.visibility = visibility;
+
 
         await project.save();
 
@@ -257,5 +258,75 @@ export const deleteProject = async (req, res) => {
         res.status(500).json({
             message: error.message,
         });
+    }
+};
+export const getPublicProjects = async (req, res) => {
+    try {
+        const search = req.query.search || "";
+
+        const projects = await Project.find({
+            visibility: "public",
+            name: { $regex: search, $options: "i" },
+        })
+            .populate("owner", "username email")
+            .sort({ createdAt: -1 });
+
+        res.status(200).json(projects);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+export const forkProject = async (req, res) => {
+    try {
+        const original = await Project.findById(req.params.projectId);
+
+        if (!original || original.visibility !== "public") {
+            return res.status(403).json({
+                message: "Project cannot be forked",
+            });
+        }
+
+        const sourceBranch = await Branch.findById(original.liveBranch);
+
+        const sourceCommit = await Commit.findOne({
+            branch: sourceBranch._id,
+        }).sort({ version: -1 });
+
+        const newProject = await Project.create({
+            name: `${original.name} (Fork)`,
+            owner: req.user.id,
+            visibility: "private",
+            forkedFrom: original._id,
+        });
+
+        const newBranch = await Branch.create({
+            name: "main",
+            project: newProject._id,
+            owner: req.user.id,
+            isMain: true,
+        });
+
+        newProject.liveBranch = newBranch._id;
+        await newProject.save();
+
+        await Commit.create({
+            project: newProject._id,
+            branch: newBranch._id,
+            createdBy: req.user.id,
+            version: 1,
+            message: "Forked from public project",
+            state: sourceCommit?.state || {
+                images: [],
+                nodes: [],
+                edges: [],
+            },
+        });
+
+        newBranch.version = 1;
+        await newBranch.save();
+
+        res.status(201).json(newProject);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
     }
 };

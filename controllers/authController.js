@@ -12,6 +12,8 @@ export const signup = async (req, res) => {
     try {
         const { username, email, password } = req.body;
 
+        console.log("aaaa", username, email, password)
+
         // validation
         if (!username || !email || !password) {
             return res.status(400).json({

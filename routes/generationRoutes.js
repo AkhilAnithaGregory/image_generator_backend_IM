@@ -5,7 +5,7 @@ import { generateImage } from "../controllers/generationController.js";
 const router = express.Router();
 const upload = multer({ dest: "uploads/" });
 
-router.post("/generate", upload.fields([
+router.post("/", upload.fields([
     { name: "images", maxCount: 4 },
     { name: "previousImage", maxCount: 1 },
     { name: "drawing", maxCount: 1 },
