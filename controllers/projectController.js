@@ -8,13 +8,11 @@ export const createProject = async (req, res) => {
     try {
         const { name } = req.body;
 
-        // create project
         const project = await Project.create({
             name,
             owner: req.user.id,
         });
 
-        // create main branch
         const mainBranch = await Branch.create({
             name: "main",
             project: project._id,
@@ -26,7 +24,6 @@ export const createProject = async (req, res) => {
 
         await project.save();
 
-        // initial empty state
         await Commit.create({
             project: project._id,
             branch: mainBranch._id,
@@ -75,8 +72,6 @@ export const getProjects = async (req, res) => {
 
         res.status(200).json(projects);
     } catch (error) {
-        console.log(error);
-
         res.status(500).json({
             message: error.message,
         });
@@ -103,8 +98,6 @@ export const getSingleProject = async (req, res) => {
                     "Project not found",
             });
         }
-
-        // ACCESS CHECK
         const isOwner =
             project.owner._id.toString() ===
             req.user.id;
@@ -125,8 +118,6 @@ export const getSingleProject = async (req, res) => {
                     "Unauthorized",
             });
         }
-
-        // branches
         const branches =
             await Branch.find({
                 project:
@@ -138,8 +129,6 @@ export const getSingleProject = async (req, res) => {
             branches,
         });
     } catch (error) {
-        console.log(error);
-
         res.status(500).json({
             message: error.message,
         });
@@ -191,8 +180,6 @@ export const updateProject = async (req, res) => {
             project,
         });
     } catch (error) {
-        console.log(error);
-
         res.status(500).json({
             message: error.message,
         });
@@ -211,8 +198,6 @@ export const deleteProject = async (req, res) => {
                     "Project not found",
             });
         }
-
-        // owner check
         if (
             project.owner.toString() !==
             req.user.id
@@ -222,8 +207,6 @@ export const deleteProject = async (req, res) => {
                     "Unauthorized",
             });
         }
-
-        // delete related data
         await Branch.deleteMany({
             project:
                 project._id,
@@ -243,9 +226,6 @@ export const deleteProject = async (req, res) => {
             project:
                 project._id,
         });
-
-
-        // delete project
         await project.deleteOne();
 
         res.status(200).json({
@@ -253,8 +233,6 @@ export const deleteProject = async (req, res) => {
                 "Project deleted successfully",
         });
     } catch (error) {
-        console.log(error);
-
         res.status(500).json({
             message: error.message,
         });

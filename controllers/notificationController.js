@@ -23,8 +23,6 @@ export const getNotifications = async (req, res) => {
             notifications
         );
     } catch (error) {
-        console.log(error);
-
         res.status(500).json({
             message:
                 error.message,
@@ -53,7 +51,6 @@ export const getSingleNotification = async (req, res) => {
             });
         }
 
-        // access check
         if (
             notification.receiver.toString() !==
             req.user.id
@@ -68,8 +65,6 @@ export const getSingleNotification = async (req, res) => {
             notification
         );
     } catch (error) {
-        console.log(error);
-
         res.status(500).json({
             message:
                 error.message,
@@ -89,8 +84,6 @@ export const markAsRead = async (req, res) => {
                     "Notification not found",
             });
         }
-
-        // owner check
         if (
             notification.receiver.toString() !==
             req.user.id
@@ -112,8 +105,6 @@ export const markAsRead = async (req, res) => {
             notification,
         });
     } catch (error) {
-        console.log(error);
-
         res.status(500).json({
             message:
                 error.message,
@@ -139,8 +130,6 @@ export const markAllAsRead = async (req, res) => {
                 "All notifications marked as read",
         });
     } catch (error) {
-        console.log(error);
-
         res.status(500).json({
             message:
                 error.message,
@@ -160,8 +149,6 @@ export const deleteNotification = async (req, res) => {
                     "Notification not found",
             });
         }
-
-        // owner check
         if (
             notification.receiver.toString() !==
             req.user.id
@@ -179,8 +166,6 @@ export const deleteNotification = async (req, res) => {
                 "Notification deleted successfully",
         });
     } catch (error) {
-        console.log(error);
-
         res.status(500).json({
             message:
                 error.message,
@@ -199,8 +184,6 @@ export const deleteAllNotifications = async (req, res) => {
                 "All notifications deleted successfully",
         });
     } catch (error) {
-        console.log(error);
-
         res.status(500).json({
             message:
                 error.message,
@@ -223,8 +206,6 @@ export const getUnreadCount = async (req, res) => {
             unreadCount: count,
         });
     } catch (error) {
-        console.log(error);
-
         res.status(500).json({
             message:
                 error.message,

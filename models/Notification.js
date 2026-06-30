@@ -29,6 +29,7 @@ const notificationSchema = new mongoose.Schema(
                 "PROJECT_ACCEPTED",
                 "PROJECT_REJECTED",
                 "MERGE_COMPLETED",
+                "PR_MERGED"
             ],
         },
 

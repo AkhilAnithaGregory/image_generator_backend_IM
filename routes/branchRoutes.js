@@ -1,14 +1,13 @@
 import express from "express";
 import authMiddleware from "../middleware/authMiddleware.js";
-import { getBranches, createBranch, deleteBranch } from "../controllers/branchController.js";
-
-import { pullLatest } from "../controllers/commitController.js";
+import * as branch from "../controllers/branchController.js";
+import * as pull from "../controllers/commitController.js";
 
 const router = express.Router();
 
-router.get("/:projectId", authMiddleware, getBranches);
-router.post("/:projectId", authMiddleware, createBranch);
-router.delete("/:branchId", authMiddleware, deleteBranch);
-router.get("/:branchId/pull", authMiddleware, pullLatest);
+router.get("/:projectId", authMiddleware, branch.getBranches);
+router.post("/:projectId", authMiddleware, branch.createBranch);
+router.delete("/:branchId", authMiddleware, branch.deleteBranch);
+router.get("/:branchId/pull", authMiddleware, pull.pullLatest);
 
 export default router;

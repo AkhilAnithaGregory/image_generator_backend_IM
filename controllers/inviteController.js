@@ -4,7 +4,6 @@ import Project from "../models/Project.js";
 import Branch from "../models/Branch.js";
 import Notification from "../models/Notification.js";
 
-
 export const sendInvite = async (req, res) => {
     try {
         const { projectId } = req.params;
@@ -17,7 +16,6 @@ export const sendInvite = async (req, res) => {
             });
         }
 
-        /* ✅ FIND PROJECT */
         const project = await Project.findById(projectId);
         if (!project) {
             return res.status(404).json({
@@ -25,14 +23,12 @@ export const sendInvite = async (req, res) => {
             });
         }
 
-        /* ✅ ONLY OWNER CAN INVITE */
         if (project.owner.toString() !== req.user.id) {
             return res.status(403).json({
                 message: "Unauthorized",
             });
         }
 
-        /* ✅ FIND TARGET USER */
         const targetUser = await User.findOne({ email });
         if (!targetUser) {
             return res.status(404).json({
@@ -40,14 +36,12 @@ export const sendInvite = async (req, res) => {
             });
         }
 
-        /* ✅ CANNOT INVITE SELF */
         if (targetUser._id.toString() === req.user.id) {
             return res.status(400).json({
                 message: "You cannot invite yourself",
             });
         }
 
-        /* ✅ CHECK IF ALREADY COLLABORATOR */
         const alreadyCollaborator =
             project.owner.toString() === targetUser._id.toString() ||
             project.collaborators.some(
@@ -60,29 +54,22 @@ export const sendInvite = async (req, res) => {
             });
         }
 
-        /* ✅ CHECK EXISTING INVITE (ANY STATUS) */
         let invite = await Invite.findOne({
             project: projectId,
             toUser: targetUser._id,
         });
 
-        /* ✅ HANDLE EXISTING INVITE */
         if (invite) {
-            // ❌ pending → block
             if (invite.status === "pending") {
                 return res.status(400).json({
                     message: "Invite already sent and pending",
                 });
             }
-
-            // ❌ accepted → block
             if (invite.status === "accepted") {
                 return res.status(400).json({
                     message: "User is already a collaborator",
                 });
             }
-
-            // ✅ rejected → re-invite
             if (invite.status === "rejected") {
                 invite.status = "pending";
                 invite.fromUser = req.user.id;
@@ -106,16 +93,12 @@ export const sendInvite = async (req, res) => {
                 });
             }
         }
-
-        /* ✅ CREATE NEW INVITE */
         invite = await Invite.create({
             project: projectId,
             fromUser: req.user.id,
             toUser: targetUser._id,
             status: "pending",
         });
-
-        /* ✅ CREATE NOTIFICATION */
         await Notification.create({
             receiver: targetUser._id,
             sender: req.user.id,
@@ -133,9 +116,6 @@ export const sendInvite = async (req, res) => {
             invite,
         });
     } catch (error) {
-        console.error(error);
-
-        // ✅ HANDLE DUPLICATE KEY (SAFETY NET)
         if (error.code === 11000) {
             return res.status(400).json({
                 message: "Invite already exists for this user and project",
@@ -147,9 +127,6 @@ export const sendInvite = async (req, res) => {
         });
     }
 };
-
-
-
 export const acceptInvite = async (req, res) => {
     try {
         const invite = await Invite.findById(req.params.inviteId);
@@ -159,22 +136,16 @@ export const acceptInvite = async (req, res) => {
                 message: "Invite not found",
             });
         }
-
-        // ✅ only invited user
         if (invite.toUser.toString() !== req.user.id) {
             return res.status(403).json({
                 message: "Unauthorized",
             });
         }
-
-        // ✅ already handled
         if (invite.status !== "pending") {
             return res.status(400).json({
                 message: "Invite already handled",
             });
         }
-
-        // ✅ mark accepted
         invite.status = "accepted";
         await invite.save();
 
@@ -185,8 +156,6 @@ export const acceptInvite = async (req, res) => {
                 message: "Project not found",
             });
         }
-
-        // ✅ add collaborator (safe)
         const alreadyCollaborator = project.collaborators.some(
             (c) => c.user.toString() === req.user.id
         );
@@ -198,8 +167,6 @@ export const acceptInvite = async (req, res) => {
             });
             await project.save();
         }
-
-        // ✅ create personal branch if missing
         const existingBranch = await Branch.findOne({
             project: project._id,
             owner: req.user.id,
@@ -214,14 +181,11 @@ export const acceptInvite = async (req, res) => {
                 isMain: false,
             });
         }
-
         await Notification.deleteMany({
             receiver: req.user.id,
             type: "PROJECT_INVITE",
             "data.inviteId": invite._id,
         });
-
-        // ✅ create ACCEPTED notification
         await Notification.create({
             receiver: req.user.id,
             sender: req.user.id,
@@ -241,8 +205,6 @@ export const acceptInvite = async (req, res) => {
         });
     }
 };
-
-
 export const rejectInvite = async (req, res) => {
     try {
         const invite = await Invite.findById(req.params.inviteId);
@@ -252,22 +214,16 @@ export const rejectInvite = async (req, res) => {
                 message: "Invite not found",
             });
         }
-
-        // ✅ only invited user
         if (invite.toUser.toString() !== req.user.id) {
             return res.status(403).json({
                 message: "Unauthorized",
             });
         }
-
-        // ✅ already handled
         if (invite.status !== "pending") {
             return res.status(400).json({
                 message: "Invite already handled",
             });
         }
-
-        // ✅ mark rejected
         invite.status = "rejected";
         await invite.save();
 
@@ -283,8 +239,6 @@ export const rejectInvite = async (req, res) => {
             type: "PROJECT_INVITE",
             "data.inviteId": invite._id,
         });
-
-        // ✅ create rejected notification (NO targetUser here)
         await Notification.create({
             receiver: req.user.id,
             sender: req.user.id,
@@ -304,11 +258,7 @@ export const rejectInvite = async (req, res) => {
         });
     }
 };
-
-export const getMyInvites = async (
-    req,
-    res
-) => {
+export const getMyInvites = async (req, res) => {
     try {
         const invites = await Invite.find({
             toUser: req.user.id,
@@ -335,10 +285,7 @@ export const getMyInvites = async (
         });
     }
 };
-export const cancelInvite = async (
-    req,
-    res
-) => {
+export const cancelInvite = async (req, res) => {
     try {
         const invite =
             await Invite.findById(
@@ -350,8 +297,6 @@ export const cancelInvite = async (
                 message: "Invite not found",
             });
         }
-
-        // find project
         const project =
             await Project.findById(
                 invite.project
@@ -362,8 +307,6 @@ export const cancelInvite = async (
                 message: "Project not found",
             });
         }
-
-        // owner only
         if (
             project.owner.toString() !==
             req.user.id
@@ -372,8 +315,6 @@ export const cancelInvite = async (
                 message: "Unauthorized",
             });
         }
-
-        // only pending invites
         if (invite.status !== "pending") {
             return res.status(400).json({
                 message:
@@ -388,8 +329,6 @@ export const cancelInvite = async (
                 "Invite cancelled successfully",
         });
     } catch (error) {
-        console.log(error);
-
         res.status(500).json({
             message: error.message,
         });
@@ -406,35 +345,26 @@ export const removeCollaborator = async (req, res) => {
                 message: "Project not found",
             });
         }
-
-        // ✅ owner only
         if (project.owner.toString() !== req.user.id) {
             return res.status(403).json({
                 message: "Unauthorized",
             });
         }
-
-        // ✅ cannot remove owner
         if (collaboratorId === req.user.id) {
             return res.status(400).json({
                 message: "Owner cannot remove themselves",
             });
         }
-
-        // ✅ remove collaborator
         project.collaborators = project.collaborators.filter(
             (c) => c.user.toString() !== collaboratorId
         );
 
         await project.save();
-
-        // ✅ delete collaborator branches
         await Branch.deleteMany({
             project: projectId,
             owner: collaboratorId,
             isMain: false,
         });
-
         await Invite.updateMany(
             {
                 project: projectId,
@@ -451,7 +381,6 @@ export const removeCollaborator = async (req, res) => {
             message: "Collaborator removed successfully",
         });
     } catch (error) {
-        console.error(error);
         res.status(500).json({
             message: error.message,
         });
@@ -479,7 +408,6 @@ export const getProjectCollaborators = async (req, res) => {
             });
         }
 
-        // access check
         const isOwner =
             project.owner._id.toString() ===
             req.user.id;
@@ -508,8 +436,6 @@ export const getProjectCollaborators = async (req, res) => {
                 project.collaborators,
         });
     } catch (error) {
-        console.log(error);
-
         res.status(500).json({
             message: error.message,
         });

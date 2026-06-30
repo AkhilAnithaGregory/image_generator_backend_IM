@@ -23,7 +23,6 @@ export const generateImage = async (req, res) => {
       lastKnownVersion,
     } = req.body;
 
-    /* ✅ VALIDATION */
     if (!prompt) {
       return res.status(400).json({
         message: "Prompt is required",
@@ -43,7 +42,6 @@ export const generateImage = async (req, res) => {
       });
     }
 
-    /* ✅ AI MODEL */
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
     const model = genAI.getGenerativeModel({
       model: modelName || "gemini-3.1-flash-image-preview",
@@ -54,7 +52,6 @@ export const generateImage = async (req, res) => {
 You are an image editing AI performing masked inpainting.
 `;
 
-    /* ✅ FILES */
     const uploadedImages = req.files?.images || [];
     const previousImage = req.files?.previousImage || [];
     const drawingImage = req.files?.drawing || [];
@@ -81,7 +78,6 @@ You are an image editing AI performing masked inpainting.
       });
     }
 
-    /* ✅ GENERATE IMAGE */
     const result = await model.generateContent({
       contents: [{ role: "user", parts: contents }],
       generationConfig: {
@@ -110,7 +106,6 @@ You are an image editing AI performing masked inpainting.
       });
     }
 
-    /* ✅ SAVE IMAGE */
     const buffer = Buffer.from(
       imagePart.inlineData.data,
       "base64"
@@ -124,7 +119,6 @@ You are an image editing AI performing masked inpainting.
 
     let commit = null;
 
-    /* ✅ ✅ ✅ SAFE COMMIT BLOCK */
     if (projectId && branchId && req.user?.id) {
       const branch = await Branch.findById(branchId);
 
@@ -134,7 +128,6 @@ You are an image editing AI performing masked inpainting.
         });
       }
 
-      /* ✅ ACCESS CONTROL */
       const { error } = await checkProjectAccess(
         projectId,
         req.user.id
@@ -150,7 +143,6 @@ You are an image editing AI performing masked inpainting.
         branch: branchId,
       }).sort({ version: -1 });
 
-      /* ✅ CONFLICT CONTROL */
       if (
         latestCommit &&
         lastKnownVersion !== undefined &&
@@ -183,11 +175,10 @@ You are an image editing AI performing masked inpainting.
       await branch.save();
     }
 
-    /* ✅ RESPONSE */
     return res.status(201).json({
       image: imageUrl,
       text: textPart?.text || "",
-      commit, // null if not logged in ✅
+      commit,
       aspectRatio,
       modelName,
     });

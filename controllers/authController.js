@@ -14,14 +14,12 @@ export const signup = async (req, res) => {
 
         console.log("aaaa", username, email, password)
 
-        // validation
         if (!username || !email || !password) {
             return res.status(400).json({
                 message: "All fields are required",
             });
         }
 
-        // check existing user
         const existingUser = await User.findOne({ email });
 
         if (existingUser) {
@@ -30,17 +28,14 @@ export const signup = async (req, res) => {
             });
         }
 
-        // hash password
         const hashedPassword = await bcrypt.hash(password, 10);
 
-        // create user
         const user = await User.create({
             username,
             email,
             password: hashedPassword,
         });
 
-        // generate token
         const token = jwt.sign(
             {
                 id: user._id,
@@ -73,14 +68,12 @@ export const login = async (req, res) => {
     try {
         const { email, password } = req.body;
 
-        // validation
         if (!email || !password) {
             return res.status(400).json({
                 message: "Email and password required",
             });
         }
 
-        // check user
         const user = await User.findOne({ email });
 
         if (!user) {
@@ -89,7 +82,6 @@ export const login = async (req, res) => {
             });
         }
 
-        // compare password
         const isMatch = await bcrypt.compare(
             password,
             user.password
@@ -101,7 +93,6 @@ export const login = async (req, res) => {
             });
         }
 
-        // create token
         const token = jwt.sign(
             {
                 id: user._id,
@@ -145,10 +136,7 @@ export const getMe = async (req, res) => {
         });
     }
 };
-export const updateUser = async (
-    req,
-    res
-) => {
+export const updateUser = async (req, res) => {
     try {
         const {
             username,
@@ -157,7 +145,6 @@ export const updateUser = async (
             email,
         } = req.body;
 
-        // email update not allowed
         if (email) {
             return res.status(400).json({
                 message:
@@ -165,7 +152,6 @@ export const updateUser = async (
             });
         }
 
-        // find user
         const user = await User.findById(
             req.user.id
         );
@@ -176,15 +162,12 @@ export const updateUser = async (
             });
         }
 
-        // UPDATE USERNAME
         if (username) {
             user.username = username;
         }
 
-        // UPDATE PASSWORD
         if (oldPassword || newPassword) {
 
-            // both required
             if (
                 !oldPassword ||
                 !newPassword
@@ -195,7 +178,6 @@ export const updateUser = async (
                 });
             }
 
-            // verify old password
             const isMatch =
                 await bcrypt.compare(
                     oldPassword,
@@ -209,7 +191,6 @@ export const updateUser = async (
                 });
             }
 
-            // hash new password
             const hashedPassword =
                 await bcrypt.hash(
                     newPassword,
@@ -240,29 +221,22 @@ export const updateUser = async (
         });
     }
 };
-export const deleteUser = async (
-    req,
-    res
-) => {
+export const deleteUser = async (req, res) => {
     try {
         const userId = req.user.id;
 
-        // delete owned projects
         await Project.deleteMany({
             owner: userId,
         });
 
-        // delete branches
         await Branch.deleteMany({
             owner: userId,
         });
 
-        // delete commits
         await Commit.deleteMany({
             createdBy: userId,
         });
 
-        // delete invites
         await Invite.deleteMany({
             $or: [
                 { fromUser: userId },
@@ -270,12 +244,10 @@ export const deleteUser = async (
             ],
         });
 
-        // delete pull requests
         await PullRequest.deleteMany({
             createdBy: userId,
         });
 
-        // delete notifications
         await Notification.deleteMany({
             $or: [
                 { sender: userId },
@@ -283,7 +255,6 @@ export const deleteUser = async (
             ],
         });
 
-        // remove collaborator from projects
         await Project.updateMany(
             {},
             {
@@ -295,7 +266,6 @@ export const deleteUser = async (
             }
         );
 
-        // finally delete user
         await User.findByIdAndDelete(
             userId
         );
@@ -305,8 +275,6 @@ export const deleteUser = async (
                 "User deleted successfully",
         });
     } catch (error) {
-        console.log(error);
-
         res.status(500).json({
             message: "Server error",
         });

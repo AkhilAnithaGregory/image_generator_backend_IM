@@ -30,7 +30,6 @@ const commitSchema = new mongoose.Schema(
             default: "Updated project",
         },
 
-        // ✅ FULL STATE (BEST WAY)
         state: {
             type: mongoose.Schema.Types.Mixed,
             default: {},

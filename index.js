@@ -26,7 +26,7 @@ app.use(cors());
 app.use("/api/auth", authRoutes);
 app.use("/api/commit", commitRoutes);
 app.use("/api/invite", inviteRoutes);
-app.use("/api/pull", pullRequestRoutes);
+app.use("/api/pull_request", pullRequestRoutes);
 app.use("/api/projects", projectRoutes);
 app.use("/api/notification", notificationRoutes);
 app.use("/api/branch", branchRoutes);

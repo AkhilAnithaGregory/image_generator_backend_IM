@@ -31,7 +31,6 @@ export const commitChanges = async (req, res) => {
       branch: branchId,
     }).sort({ version: -1 });
 
-    /* ✅ CONFLICT CHECK */
     if (
       latestCommit &&
       lastKnownVersion !== undefined &&

@@ -28,5 +28,3 @@ io.on("connection", (socket) => {
         console.log("Disconnected");
     });
 });
-
-//socket.emit("join", user.id); frontend

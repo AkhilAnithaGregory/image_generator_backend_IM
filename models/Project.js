@@ -53,17 +53,7 @@ const projectSchema = new mongoose.Schema(
   }
 );
 
-
-/* Find projects owned by user */
-projectSchema.index({ owner: 1 });
-
-/* Find projects where user is collaborator */
 projectSchema.index({ "collaborators.user": 1 });
-
-/* Public project search */
 projectSchema.index({ visibility: 1, name: 1 });
-
-/* Fork tree / attribution */
-projectSchema.index({ forkedFrom: 1 });
 
 export default mongoose.model("Project", projectSchema);
