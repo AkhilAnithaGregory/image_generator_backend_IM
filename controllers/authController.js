@@ -60,7 +60,8 @@ export const signup = async (req, res) => {
         console.log(error);
 
         res.status(500).json({
-            message: "Server error",
+            message: error.message || "Server error",
+            error: error,
         });
     }
 };
@@ -117,7 +118,8 @@ export const login = async (req, res) => {
         console.log(error);
 
         res.status(500).json({
-            message: "Server error",
+            message: error.message || "Server error",
+            error: error,
         });
     }
 };
