@@ -6,6 +6,8 @@ export const commitChanges = async (req, res) => {
   try {
     const { branchId } = req.params;
     const { state, message, lastKnownVersion } = req.body;
+    const normalizedMessage =
+      typeof message === "string" ? message.trim() : "";
 
     if (!state) {
       return res.status(400).json({
@@ -51,7 +53,7 @@ export const commitChanges = async (req, res) => {
       branch: branchId,
       createdBy: req.user.id,
       version: nextVersion,
-      message: message || `Commit v${nextVersion}`,
+      message: normalizedMessage || `Commit v${nextVersion}`,
       state,
     });
 

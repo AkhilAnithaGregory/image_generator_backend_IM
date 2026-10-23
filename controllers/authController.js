@@ -8,11 +8,14 @@ import Invite from "../models/Invite.js";
 import PullRequest from "../models/PullRequest.js";
 import Notification from "../models/Notification.js";
 
+const authErrorMessage = (error) =>
+    process.env.AUTH_ERROR_DETAILS === "true" && error instanceof Error
+        ? error.message
+        : "Server error";
+
 export const signup = async (req, res) => {
     try {
         const { username, email, password } = req.body;
-
-        console.log("aaaa", username, email, password)
 
         if (!username || !email || !password) {
             return res.status(400).json({
@@ -57,10 +60,10 @@ export const signup = async (req, res) => {
             },
         });
     } catch (error) {
-        console.log(error);
+        console.error("Signup failed:", error);
 
         res.status(500).json({
-            message: "Server error",
+            message: authErrorMessage(error),
         });
     }
 };
@@ -114,10 +117,10 @@ export const login = async (req, res) => {
             },
         });
     } catch (error) {
-        console.log(error);
+        console.error("Login failed:", error);
 
         res.status(500).json({
-            message: "Server error",
+            message: authErrorMessage(error),
         });
     }
 };

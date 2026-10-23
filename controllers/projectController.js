@@ -137,8 +137,16 @@ export const getSingleProject = async (req, res) => {
 export const updateProject = async (req, res) => {
     try {
         const { name, visibility } = req.body;
+        const hasName = name !== undefined;
+        const normalizedName = typeof name === "string" ? name.trim() : "";
 
-        if (!name && !visibility) {
+        if (hasName && !normalizedName) {
+            return res.status(400).json({
+                message: "Project name cannot be empty",
+            });
+        }
+
+        if (!hasName && !visibility) {
             return res.status(400).json({
                 message: "Nothing to update",
             });
@@ -167,7 +175,7 @@ export const updateProject = async (req, res) => {
         }
 
 
-        if (name) project.name = name;
+        if (hasName) project.name = normalizedName;
         if (visibility) project.visibility = visibility;
 
 
